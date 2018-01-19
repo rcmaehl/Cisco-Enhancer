@@ -19,14 +19,14 @@ Main()
 
 Func Main()
 
-	Local $TrayOpts = TrayCreateItem("Options")
+	Local $TrayOpts = TrayCreateItem("Settings")
 	TrayCreateItem("")
-	Local $TrayExit = TrayCreateItem("Exit"   )
+	Local $TrayExit = TrayCreateItem("Exit"    )
 
-	Local $hGUI = GUICreate("Options", 280, 60, @DesktopWidth - 300, @DesktopHeight - 150, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX), $WS_EX_TOOLWINDOW + $WS_EX_TOPMOST)
+	Local $hGUI = GUICreate("Settings", 280, 60, @DesktopWidth - 300, @DesktopHeight - 150, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX), $WS_EX_TOOLWINDOW + $WS_EX_TOPMOST)
 
 	Local $hCTIToolkit = GUICtrlCreateCheckbox("Show Reminders for Non-Ready Status"     , 10, 00, 260, 20, $BS_RIGHTBUTTON)
-	Local $hUseCTILess = GUICtrlCreateCheckbox("Use New 1 Minute Wrap-Up Time"           , 10, 20, 260, 20, $BS_RIGHTBUTTON)
+	Local $hUseCTILess = GUICtrlCreateCheckbox("Use 1 Minute Wrap-Up Reminders"          , 10, 20, 260, 20, $BS_RIGHTBUTTON)
 	Local $honStartup  = GUICtrlCreateCheckbox("Start with Windows"                      , 10, 40, 260, 20, $BS_RIGHTBUTTON)
 	GUICtrlSetTip($hCTIToolkit, "Display 2 minute reminders for Wrap-Up and" & @CRLF & "15 minute, 30 minute, & 1 hour reminders for Not Ready")
 	GUICtrlSetTip($hUseCTILess, "Use 1 minute reminders for Wrap-Up to reduce AHT compared to 2 minutes")
@@ -46,6 +46,7 @@ Func Main()
 	Local $hMsgBox = Null
 	Local $hTaskBar = Null
 	Local $hNRTimer = TimerInit()
+	Local $bReserved = False
 
 	While 1
 
@@ -103,15 +104,15 @@ Func Main()
 				EndIf
 
 				TraySetToolTip("Running...")
-				$bCLock = _GetDesktopLock()
+
 				$sStatus = StatusbarGetText("CTI Toolkit Agent Desktop", "", "4")
 				$sStatus = StringStripWS($sStatus, $STR_STRIPLEADING + $STR_STRIPTRAILING)
 				$sStatus = StringReplace($sStatus, "Agent Status: ", "")
+				$bCLock = _GetDesktopLock()
 
 				Switch $sStatus
 
 					Case "Not Ready"
-
 						If Not $bTimer Then
 							$bTimer = True
 							$hNRTimer = TimerInit()
