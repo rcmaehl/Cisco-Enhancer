@@ -103,7 +103,7 @@ Func Main()
 				EndIf
 
 				TraySetToolTip("Running...")
-
+				$bCLock = _GetDesktopLock()
 				$sStatus = StatusbarGetText("CTI Toolkit Agent Desktop", "", "4")
 				$sStatus = StringStripWS($sStatus, $STR_STRIPLEADING + $STR_STRIPTRAILING)
 				$sStatus = StringReplace($sStatus, "Agent Status: ", "")
@@ -121,7 +121,8 @@ Func Main()
 								ConsoleWrite("")
 							Else
 								$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in Not Ready Status for over " & $iNRC * 15 & " minutes. Would you like to go back to Ready Status?", 15)
-								$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
+								WinMove("CTI Toolkit Agent Desktop", "", Default, Default, 940, 360)
+								$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 83, 15, $CTRL_CREATED)
 								If $hMsgBox = $IDYES Then ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 								$hMsgBox = Null
 							EndIf
@@ -135,7 +136,9 @@ Func Main()
 							$bLLock = False
 							$bCLock = True
 							$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've just logged back in while Not Ready. You've been Not Ready for " & ($iNRC * 15) + Floor(TimerDiff($hNRTimer) / 60000) & " minutes. Would you like to go back to Ready Status?", 30)
-							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
+							WinMove("CTI Toolkit Agent Desktop", "", Default, Default, 940, 360)
+							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 83, 15, $CTRL_CREATED)
+							If @error Then $aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
 							If $hMsgBox = $IDYES Then ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 							$hMsgBox = Null
 						Else
@@ -143,33 +146,49 @@ Func Main()
 							$CLock = Null
 						EndIf
 
-
 					Case "Ready"
-
+						If $bTimer And $bReserved Then
+							ConsoleWrite("Reserved, RONA/Hangup, " & Round(TimerDiff($hNRTimer), 1) & "ms" & @CRLF)
+;							MsgBox($MB_OK + $MB_ICONWARNING + $MB_TOPMOST, "ALERT", "Ready/Reserved Issue Detected.", 30)
+							$hBTimer = TimerInit()
+							$bReserved = False
+						EndIf
 						$iNRC = 0
 						$bTimer = False
 						$hNRTimer = TimerInit()
 
-					Case "Talking"
-
+					Case "Reserved"
+						If Not $bReserved Then ConsoleWrite(Round(TimerDiff($hBTimer) / 1000, 1) & "s - ")
+						$iNRC = 0
+						$bTimer = True
 						$hNRTimer = TimerInit()
+						$bReserved = True
+
+					Case "Talking"
+						If $bReserved Then ConsoleWrite("Answered" & @CRLF)
+						$iNRC = 0
+						$bTimer = False
+						$hBTimer = TimerInit()
+						$hNRTimer = TimerInit()
+						$bReserved = False
 
 					Case "WrapUp"
-
 						If Not $bTimer Then
 							$bTimer = True
 							$hTimer = TimerInit()
 						ElseIf _IsChecked($hUseCTILess) And TimerDiff($hNRTimer) >= 60000 Then
 							$iNRC += 1
 							$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in WrapUp Status for over " & 1 * $iNRC & " minute(s). Would you like to go back to Ready Status?", 15)
-							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
+							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 83, 15, $CTRL_CREATED)
+							If @error Then $aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
 							If $hMsgBox = $IDYES Then ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 							$hMsgBox = Null
 							$hNRTimer = TimerInit()
 						ElseIf TimerDiff($hNRTimer) >= 120000 Then
 							$iNRC += 1
 							$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in WrapUp Status for over " & 2 * $iNRC & "minutes. Would you like to go back to Ready Status?", 15)
-							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
+							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 83, 15, $CTRL_CREATED)
+							If @error Then $aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
 							If $hMsgBox = $IDYES Then ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 							$hMsgBox = Null
 							$hNRTimer = TimerInit()
