@@ -7,13 +7,11 @@
 #include <StringConstants.au3>
 #include <WindowsConstants.au3>
 
-
 Opt("TrayMenuMode", 3) ; Disable Default Tray menu
 
 Global Const $CTRL_ALL = 0
 Global Const $CTRL_CREATED = 1
 Global Const $ABM_GETTASKBARPOS = 0x5
-
 
 Main()
 
@@ -23,11 +21,12 @@ Func Main()
 	TrayCreateItem("")
 	Local $TrayExit = TrayCreateItem("Exit"    )
 
-	Local $hGUI = GUICreate("Settings", 280, 60, @DesktopWidth - 300, @DesktopHeight - 150, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX), $WS_EX_TOOLWINDOW + $WS_EX_TOPMOST)
+	Local $hGUI = GUICreate("Settings", 280, 80, @DesktopWidth - 300, @DesktopHeight - 150, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX), $WS_EX_TOOLWINDOW + $WS_EX_TOPMOST)
 
-	Local $hCTIToolkit = GUICtrlCreateCheckbox("Show Reminders for Non-Ready Status"     , 10, 00, 260, 20, $BS_RIGHTBUTTON)
-	Local $hUseCTILess = GUICtrlCreateCheckbox("Use 1 Minute Wrap-Up Reminders"          , 10, 20, 260, 20, $BS_RIGHTBUTTON)
-	Local $honStartup  = GUICtrlCreateCheckbox("Start with Windows"                      , 10, 40, 260, 20, $BS_RIGHTBUTTON)
+	Local $hWindowLess = GUICtrlCreateCheckbox("Close Non-Work Windows while Talking"    , 10, 00, 260, 20, $BS_RIGHTBUTTON)
+	Local $hCTIToolkit = GUICtrlCreateCheckbox("Show Reminders for Non-Ready Status"     , 10, 20, 260, 20, $BS_RIGHTBUTTON)
+	Local $hUseCTILess = GUICtrlCreateCheckbox("Use 1 Minute Wrap-Up Reminders"          , 10, 40, 260, 20, $BS_RIGHTBUTTON)
+	Local $honStartup  = GUICtrlCreateCheckbox("Start with Windows"                      , 10, 60, 260, 20, $BS_RIGHTBUTTON)
 	GUICtrlSetTip($hCTIToolkit, "Display 2 minute reminders for Wrap-Up and" & @CRLF & "15 minute, 30 minute, & 1 hour reminders for Not Ready")
 	GUICtrlSetTip($hUseCTILess, "Use 1 minute reminders for Wrap-Up to reduce AHT compared to 2 minutes")
 
@@ -108,6 +107,7 @@ Func Main()
 				$sStatus = StatusbarGetText("CTI Toolkit Agent Desktop", "", "4")
 				$sStatus = StringStripWS($sStatus, $STR_STRIPLEADING + $STR_STRIPTRAILING)
 				$sStatus = StringReplace($sStatus, "Agent Status: ", "")
+
 				$bCLock = _GetDesktopLock()
 
 				Switch $sStatus
@@ -118,7 +118,7 @@ Func Main()
 							$hNRTimer = TimerInit()
 						ElseIf TimerDiff($hNRTimer) >= 900000 Then
 							$iNRC += 1
-							If $iNRC = 3 Then
+							If $iNRC = 3 Or $iNRC = 6 Or $iNRC = 7 Then
 								ConsoleWrite("")
 							Else
 								$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in Not Ready Status for over " & $iNRC * 15 & " minutes. Would you like to go back to Ready Status?", 15)
@@ -149,8 +149,9 @@ Func Main()
 
 					Case "Ready"
 						If $bTimer And $bReserved Then
-							ConsoleWrite("Reserved, RONA/Hangup, " & Round(TimerDiff($hNRTimer), 1) & "ms" & @CRLF)
-;							MsgBox($MB_OK + $MB_ICONWARNING + $MB_TOPMOST, "ALERT", "Ready/Reserved Issue Detected.", 30)
+							ConsoleWrite("Reserved, RONA/Hangup, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
+							FileWrite(".\IdleTime.log", "RONA/Hangup, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
+;								MsgBox($MB_OK + $MB_ICONWARNING + $MB_TOPMOST, "ALERT", "Ready/Reserved Issue Detected.", 30)
 							$hBTimer = TimerInit()
 							$bReserved = False
 						EndIf
@@ -159,19 +160,46 @@ Func Main()
 						$hNRTimer = TimerInit()
 
 					Case "Reserved"
-						If Not $bReserved Then ConsoleWrite(Round(TimerDiff($hBTimer) / 1000, 1) & "s - ")
+						If Not $bReserved Then
+							ConsoleWrite(Round(TimerDiff($hBTimer) / 1000, 2) & "s - ")
+							FileWrite(".\IdleTime.log", Round(TimerDiff($hBTimer) / 1000, 2) & "s, ")
+						EndIf
 						$iNRC = 0
 						$bTimer = True
-						$hNRTimer = TimerInit()
-						$bReserved = True
+						If Not $bReserved Then
+							$hNRTimer = TimerInit()
+							$bReserved = True
+						EndIf
 
 					Case "Talking"
-						If $bReserved Then ConsoleWrite("Answered" & @CRLF)
+						If $bReserved Then
+							ConsoleWrite("Answered" & @CRLF)
+							FileWrite(".\IdleTime.log", "Answered, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
+						EndIf
 						$iNRC = 0
 						$bTimer = False
 						$hBTimer = TimerInit()
 						$hNRTimer = TimerInit()
 						$bReserved = False
+						If _IsChecked($hWindowLess) Then
+							Select
+								Case WinActive("#") And WinActive(" - Google Chrome")
+									Send("^w")
+									Sleep(500)
+								Case WinActive("Reddit") And WinActive(" - Google Chrome")
+									Send("^w")
+									Sleep(500)
+								Case WinActive("Messenger") And WinActive(" - Google Chrome")
+									Send("^w")
+									Sleep(500)
+								Case WinActive("Facebook") And WinActive(" - Google Chrome")
+									Send("^w")
+									Sleep(500)
+								Case WinActive("YouTube") And WinActive(" - Google Chrome")
+									Send("^w")
+									Sleep(500)
+							EndSelect
+						EndIf
 
 					Case "WrapUp"
 						If Not $bTimer Then
@@ -180,6 +208,7 @@ Func Main()
 						ElseIf _IsChecked($hUseCTILess) And TimerDiff($hNRTimer) >= 60000 Then
 							$iNRC += 1
 							$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in WrapUp Status for over " & 1 * $iNRC & " minute(s). Would you like to go back to Ready Status?", 15)
+							WinMove("CTI Toolkit Agent Desktop", "", Default, Default, 940, 360)
 							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 83, 15, $CTRL_CREATED)
 							If @error Then $aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
 							If $hMsgBox = $IDYES Then ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
@@ -188,6 +217,7 @@ Func Main()
 						ElseIf TimerDiff($hNRTimer) >= 120000 Then
 							$iNRC += 1
 							$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in WrapUp Status for over " & 2 * $iNRC & "minutes. Would you like to go back to Ready Status?", 15)
+							WinMove("CTI Toolkit Agent Desktop", "", Default, Default, 940, 360)
 							$aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 83, 15, $CTRL_CREATED)
 							If @error Then $aCtrls = _WinGetHandleListFromPos("CTI Toolkit Agent Desktop", "", 84, 15, $CTRL_CREATED)
 							If $hMsgBox = $IDYES Then ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
