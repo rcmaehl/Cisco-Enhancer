@@ -193,7 +193,7 @@ Func Main()
 										ExitLoop
 									Else
 										$aTask = StringSplit($sLine, ",")
-										If $aTask[0] < 3 Then ExitLoop
+										If $aTask[0] < 3 Then ContinueLoop
 										If $aTask[0] > 3 Then
 											For $i = 4 To $aTask[0]
 												$aTask[3] &= $aTask[$i]
