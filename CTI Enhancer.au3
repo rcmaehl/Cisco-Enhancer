@@ -182,23 +182,34 @@ Func Main()
 						$hNRTimer = TimerInit()
 						$bReserved = False
 						If _IsChecked($hWindowLess) Then
-							Select
-								Case WinActive("#") And WinActive(" - Google Chrome")
-									Send("^w")
-									Sleep(500)
-								Case WinActive("Reddit") And WinActive(" - Google Chrome")
-									Send("^w")
-									Sleep(500)
-								Case WinActive("Messenger") And WinActive(" - Google Chrome")
-									Send("^w")
-									Sleep(500)
-								Case WinActive("Facebook") And WinActive(" - Google Chrome")
-									Send("^w")
-									Sleep(500)
-								Case WinActive("YouTube") And WinActive(" - Google Chrome")
-									Send("^w")
-									Sleep(500)
-							EndSelect
+							$hList = FileOpen(".\Blacklist.def", $FO_READ + $FO_CREATEPATH)
+							If $hList = -1 Then
+								FileClose($hList)
+							Else
+								$iLine = 1
+								While True
+									$sLine = FileReadLine($hList, $iLine)
+									If @error = -1 Then
+										ExitLoop
+									Else
+										$aTask = StringSplit($sLine, ",")
+										If $aTask[0] < 3 Then ExitLoop
+										If $aTask[0] > 3 Then
+											For $i = 4 To $aTask[0]
+												$aTask[3] &= $aTask[$i]
+											Next
+										EndIf
+										Opt("WinTitleMatchMode", -2)
+										If WinActive($aTask[1], $aTask[2]) Then
+											Send($aTask[3])
+											Sleep(500)
+										EndIf
+										$iLine += 1
+										Opt("WinTitleMatchMode", 2)
+									EndIf
+								WEnd
+								FileClose($hList)
+							EndIf
 						EndIf
 
 					Case "WrapUp"
