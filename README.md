@@ -1,9 +1,9 @@
 # Cisco Enhancer
-A toolkit that hooks Cisco's CTI or Finesse and helps keep agent downtime to a minimum. Download under Releases
+Cisco CTI & Finesse Toolkit for keeping agent downtime to a minimum. Download under Releases
 
 ## What is Cisco Enhancer
 
-Cisco Enhancer is a set of addition options for the agent to ensure maximum ready state compliance and minimum distractions during calls. Featuring **Not Ready** and **Wrap-Up** state reminder notifications and automatic minimization or closure of defined non-work applications or windows. This is an app to be deployed individually, as wanted. Large deployments have not been tested, and are at your own risk. 
+Cisco Enhancer is a set of additional options for an agent to ensure maximum ready state compliance and minimum distractions during calls. Featuring **Not Ready** and **Wrap-Up** state reminder notifications and automatic minimization or closure of defined non-work applications/windows. This is an app to be deployed individually, as wanted. Large deployments have not been tested, and are at your own risk. 
 
 ## Current Features
 
