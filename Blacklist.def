@@ -1,5 +1,7 @@
 # Reference: https://www.autoitscript.com/autoit3/docs/appendix/SendKeys.htm
 # Program,subtext,keys to send
 Facebook,,^w
+Messenger,,^w
 Reddit,,^w
 Youtube,,^w
+#,,^w
