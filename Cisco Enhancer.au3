@@ -1,3 +1,11 @@
+#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
+#AutoIt3Wrapper_Icon=cisco.ico
+#AutoIt3Wrapper_Res_Comment=Cisco Enhancer
+#AutoIt3Wrapper_Res_Description=Cisco Enhancer. CTI & Finesse add-on
+#AutoIt3Wrapper_Res_Fileversion=1.0.0.0
+#AutoIt3Wrapper_Res_LegalCopyright=Created by Robert Maehl
+#AutoIt3Wrapper_Res_Language=1033
+#EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include <File.au3>
 #include <Array.au3>
 #include <WinAPIEx.au3>
