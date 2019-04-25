@@ -25,6 +25,8 @@ Global Const $CTRL_ALL = 0
 Global Const $CTRL_CREATED = 1
 Global Const $ABM_GETTASKBARPOS = 0x5
 
+$oMyError = ObjEvent("AutoIt.Error","_ThrowError") ; Initialize a COM error handler
+
 Main()
 
 Func Main()
@@ -47,11 +49,12 @@ Func Main()
 	GUICtrlSetState($hUseCTILess, Execute($aSettings[1]))
 	GUICtrlSetState($hOnStartup , Execute($aSettings[2]))
 
-	Local $aFinesse = Execute($aSettings[3])
+	Local $bFinesse = Execute($aSettings[3])
 	Local $sAPI = $aSettings[4]
 	Local $iUser = $aSettings[5]
 	Local $iPass = $aSettings[6]
 
+	Local $sStatus = Null
 
 	Local $iNRC = 0
 	Local $iPoll = 500
@@ -66,6 +69,17 @@ Func Main()
 	Local $hLastPoll = TimerInit()
 	Local $bReserved = False
 
+	If $bFinesse Then
+		Select
+			Case Not $sAPI
+				ContinueCase
+			Case Not $iUser
+				ContinueCase
+			Case Not $iPass
+				MsgBox($MB_OK + $MB_ICONWARNING + $MB_TOPMOST, "ALERT", "Finesse API specified but API or Credentials Invalid" & @CRLF & "Cisco Enhancer will now exit", 30)
+				Exit 1
+		EndSelect
+	EndIf
 
 	While 1
 
@@ -74,7 +88,7 @@ Func Main()
 
 		Select
 
-			Case $hTMsg = $TrayOpts
+			Case $hTMsg = $TrayOpts Or $hTMsg = $TRAY_EVENT_PRIMARYDOUBLE
 				GUISetState(@SW_SHOW, $hGUI)
 				$hTaskBar = _GetTaskBarPos()
 				#cs
@@ -115,7 +129,7 @@ Func Main()
 				EndIf
 				_SaveSettings($hCTIToolkit, $hUseCTILess, $hOnStartup)
 
-			Case WinExists("CTI Toolkit Agent Desktop") Or $aFinesse
+			Case WinExists("CTI Toolkit Agent Desktop") Or $bFinesse
 
 				If Not _IsChecked($hCTIToolkit) Then
 					TraySetToolTip("Not Running - Disabled in Settings")
@@ -200,7 +214,7 @@ Func Main()
 
 						Case "Ready", "READY"
 							If $bTimer And $bReserved Then
-								FileWrite(@ScriptDir & "\IdleTime.log", "RONA/Hangup, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
+;								FileWrite(@ScriptDir & "\IdleTime.log", "RONA/Hangup, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
 ;								MsgBox($MB_OK + $MB_ICONWARNING + $MB_TOPMOST, "ALERT", "Ready/Reserved Issue Detected.", 30)
 								$hBTimer = TimerInit()
 								$bReserved = False
@@ -211,7 +225,7 @@ Func Main()
 
 						Case "Reserved"
 							If Not $bReserved Then
-								FileWrite(@ScriptDir & "\IdleTime.log", Round(TimerDiff($hBTimer) / 1000, 2) & "s, ")
+;								FileWrite(@ScriptDir & "\IdleTime.log", Round(TimerDiff($hBTimer) / 1000, 2) & "s, ")
 							EndIf
 							$iNRC = 0
 							$bTimer = True
@@ -222,7 +236,7 @@ Func Main()
 
 						Case "Talking"
 							If $bReserved Then
-								FileWrite(@ScriptDir & "\IdleTime.log", "Answered, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
+;								FileWrite(@ScriptDir & "\IdleTime.log", "Answered, " & Round(TimerDiff($hNRTimer) / 1000, 2) & "s" & @CRLF)
 							EndIf
 							$iNRC = 0
 							$bTimer = False
@@ -302,7 +316,7 @@ Func Main()
 
 			Case Else
 
-				TraySetToolTip("Not Running - Unable to find CTI Window to Interface")
+				TraySetToolTip("Not Running - Unable to find CTI Window")
 
 		EndSelect
 
@@ -354,10 +368,10 @@ Func _LoadSettings()
 	$aSettings[0] = IniRead(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , False)
 	$aSettings[1] = IniRead(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , False)
 	$aSettings[2] = IniRead(".\CiscoE.ini", "CiscoE" , "Start w. Windows", False)
-	$aSettings[3] = IniRead(".\CiscoE.ini", "CiscoE" , "Use Fineese APIs", False)
-	$aSettings[4] = IniRead(".\CiscoE.ini", "Fineese", "API URL"         , False)
-	$aSettings[5] = IniRead(".\CiscoE.ini", "Fineese", "User ID"         , False)
-	$aSettings[6] = IniRead(".\CiscoE.ini", "Fineese", "Password"        , False)
+	$aSettings[3] = IniRead(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", False)
+	$aSettings[4] = IniRead(".\CiscoE.ini", "Finesse", "API URL"         , False)
+	$aSettings[5] = IniRead(".\CiscoE.ini", "Finesse", "User ID"         , False)
+	$aSettings[6] = IniRead(".\CiscoE.ini", "Finesse", "Password"        , False)
 	Return $aSettings
 EndFunc   ;==>_LoadSettings
 
@@ -365,10 +379,24 @@ Func _SaveSettings($bToolkit, $bRemind, $bStartup)
 	$bToolkit   = _IsChecked($bToolkit)
 	$bRemind    = _IsChecked($bRemind )
 	$bStartup   = _IsChecked($bStartup)
-	IniWrite(".\CiscoE", "Cisco"  , "Monitor Status"  , $bToolkit)
-	IniWrite(".\CiscoE", "Cisco"  , "1 Min Reminder"  , $bRemind )
-	IniWrite(".\CiscoE", "CiscoE" , "Start w. Windows", $bStartup)
+	IniWrite(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , $bToolkit)
+	IniWrite(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , $bRemind )
+	IniWrite(".\CiscoE.ini", "CiscoE" , "Start w. Windows", $bStartup)
 EndFunc   ;==>_SaveSettings
+
+Func _ThrowError()
+	Msgbox(0,"COM Error","Cisco Enhancer is unable to communicate with the Finesse API and will now exit." & @CRLF  & @CRLF & _
+			"Description: " & @TAB & $oMyError.description  & @CRLF & _
+			"Full Description:"   & @TAB & $oMyError.windescription & @CRLF & _
+			"Error Number: "       & @TAB & hex($oMyError.number,8)  & @CRLF & _
+			"DLL Error ID: "   & @TAB & $oMyError.lastdllerror   & @CRLF & _
+			"Error Occured: "   & @TAB & $oMyError.scriptline   & @CRLF & _
+			"COM Called: "       & @TAB & $oMyError.source       & @CRLF & _
+			"Help File: "       & @TAB & $oMyError.helpfile     & @CRLF & _
+			"Help Context: " & @TAB & $oMyError.helpcontext _
+			)
+	Exit 1
+EndFunc
 
 Func _WinGetHandleListFromPos($sTitle, $sText, $iX, $iY, $dFlags = $CTRL_ALL)
 
