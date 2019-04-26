@@ -128,7 +128,7 @@ Func Main()
 
 		If WinExists("CTI Toolkit Agent Desktop") Or $bFinesse Then
 
-			If Not _IsChecked($hCTIToolkit) Then
+			If Not _IsChecked($aSettings[$hCTIToolkit]) Then
 				TraySetToolTip("Not Running - Disabled in Settings")
 				ContinueLoop
 			EndIf
@@ -240,13 +240,13 @@ Func Main()
 					$hBTimer = TimerInit()
 					$hNRTimer = TimerInit()
 					$bReserved = False
-					If _IsChecked($hWindowLess) Then _ProcessBlacklist()
+					If _IsChecked($aSettings[$hWindowLess]) Then _ProcessBlacklist()
 
 				Case "WrapUp", "WORK_READY"
 					If Not $bTimer Then
 						$bTimer = True
 						$hTimer = TimerInit()
-					ElseIf _IsChecked($hUseCTILess) And TimerDiff($hNRTimer) >= 60000 Then
+					ElseIf _IsChecked($aSettings[$hUseCTILess]) And TimerDiff($hNRTimer) >= 60000 Then
 						$iNRC += 1
 						$hMsgBox = MsgBox($MB_YESNO + $MB_ICONWARNING + $MB_TOPMOST, "Reminder", "You've been in WrapUp Status for over " & 1 * $iNRC & " minute(s). Would you like to go back to Ready Status?", 15)
 						If $hMsgBox = $IDYES Then
