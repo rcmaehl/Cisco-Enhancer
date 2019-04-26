@@ -14,5 +14,6 @@ Cisco Enhancer is a set of additional options for an agent to ensure maximum rea
 ## Planned Featurs
 
 * Supervisor Edition
+* Mobile User Support
 * Server Hosted Agent Settings
 * Server Hosted Application/Window Blacklist
