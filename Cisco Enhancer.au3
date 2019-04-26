@@ -240,31 +240,7 @@ Func Main()
 					$hBTimer = TimerInit()
 					$hNRTimer = TimerInit()
 					$bReserved = False
-					If _IsChecked($hWindowLess) Then
-						$hList = FileOpen(@ScriptDir & "\Blacklist.def", $FO_READ + $FO_CREATEPATH)
-						If $hList = -1 Then
-							FileClose($hList)
-						Else
-							$iLines = _FileCountLines(@ScriptDir & "\Blacklist.def")
-							For $iLine = 1 to $iLines Step 1
-								$sLine = FileReadLine($hList, $iLine)
-								$aTask = StringSplit($sLine, ",")
-								If $aTask[0] < 3 Then ContinueLoop
-								If $aTask[0] > 3 Then
-									For $i = 4 To $aTask[0]
-										$aTask[3] &= $aTask[$i]
-									Next
-								EndIf
-								Opt("WinTitleMatchMode", -2)
-								If WinActive($aTask[1], $aTask[2]) Then
-									Send($aTask[3])
-									Sleep(500)
-								EndIf
-							Next
-							Opt("WinTitleMatchMode", 2)
-							FileClose($hList)
-						EndIf
-					EndIf
+					If _IsChecked($hWindowLess) Then _ProcessBlacklist()
 
 				Case "WrapUp", "WORK_READY"
 					If Not $bTimer Then
@@ -313,6 +289,16 @@ Func Main()
 		Else
 			TraySetToolTip("Not Running - Unable to find CTI Window")
 		EndIf
+
+#cs
+		If _IsChecked($aSettings[$hClientele]) Then
+			If $sStatus = "Not Ready" Or $sStatus = "NOT_READY" Then
+				;;;
+			Else
+				_ProcessBlacklist()
+			EndIf
+		EndIf
+#ce
 
 	WEnd
 
@@ -401,7 +387,6 @@ EndFunc   ;==>_GetTaskBarPos
 Func _LoadSettings()
 	_ConvertOldSettings(IniRead(".\CiscoE.ini", "#Meta", "FileVer", "0.0.0.0"))
 	Local $aSettings[8]
-
 	$aSettings[$hWindowLess] = _IniRead(".\CiscoE.ini", "CiscoE" , "Close Non-Work Apps", "1|0", $GUI_UNCHECKED)
 	$aSettings[$hCTIToolkit] = _IniRead(".\CiscoE.ini", "Cisco"  , "Monitor Status"     , "1|0", $GUI_UNCHECKED)
 	$aSettings[$hUseCTILess] = _IniRead(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"     , "1|0", $GUI_UNCHECKED)
@@ -412,6 +397,32 @@ Func _LoadSettings()
 	$aSettings[7] = _IniRead(".\CiscoE.ini", "Finesse", "Password"           , ""   , False)
 	Return $aSettings
 EndFunc   ;==>_LoadSettings
+
+Func _ProcessBlacklist()
+	$hList = FileOpen(@ScriptDir & "\Blacklist.def", $FO_READ + $FO_CREATEPATH)
+	If $hList = -1 Then
+		FileClose($hList)
+	Else
+		$iLines = _FileCountLines(@ScriptDir & "\Blacklist.def")
+		For $iLine = 1 to $iLines Step 1
+			$sLine = FileReadLine($hList, $iLine)
+			$aTask = StringSplit($sLine, ",")
+			If $aTask[0] < 3 Then ContinueLoop
+			If $aTask[0] > 3 Then
+				For $i = 4 To $aTask[0]
+					$aTask[3] &= $aTask[$i]
+				Next
+			EndIf
+			Opt("WinTitleMatchMode", -2)
+			If WinActive($aTask[1], $aTask[2]) Then
+				Send($aTask[3])
+				Sleep(500)
+			EndIf
+		Next
+		Opt("WinTitleMatchMode", 2)
+		FileClose($hList)
+	EndIf
+EndFunc
 
 Func _SaveSettings($aSettings)
  	IniWrite(".\CiscoE.ini", "#Meta"  , "FileVer"            , $sVer)
