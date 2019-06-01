@@ -53,7 +53,6 @@ Func Main()
 	GUICtrlSetTip($aControls[$hUseCTILess], "Use 1 minute reminders for Wrap-Up to reduce AHT compared to 2 minutes")
 
 	$aSettings = _LoadSettings()
-	_ArrayDisplay($aSettings)
 	GUICtrlSetState($aControls[$hWindowLess], $aSettings[$hWindowLess])
 	GUICtrlSetState($aControls[$hCTIToolkit], $aSettings[$hCTIToolkit])
 	GUICtrlSetState($aControls[$hUseCTILess], $aSettings[$hUseCTILess])
