@@ -2,10 +2,11 @@
 #AutoIt3Wrapper_Icon=cisco.ico
 #AutoIt3Wrapper_Res_Comment=Cisco Enhancer
 #AutoIt3Wrapper_Res_Description=Cisco Enhancer. CTI & Finesse add-on
-#AutoIt3Wrapper_Res_Fileversion=1.1.0.0
+#AutoIt3Wrapper_Res_Fileversion=1.2.0.0
 #AutoIt3Wrapper_Res_LegalCopyright=Created by Robert Maehl
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
+
 #include <File.au3>
 #include <Array.au3>
 #include <WinAPIEx.au3>
@@ -22,14 +23,13 @@
 
 Opt("TrayMenuMode", 3) ; Disable Default Tray menu
 
-Global $sVer = "1.1.0.0"
+Global $sVer = "1.2.0.0"
 
 Global Const $CTRL_ALL = 0
 Global Const $CTRL_CREATED = 1
 Global Const $ABM_GETTASKBARPOS = 0x5
 
-Global Enum $hWindowLess, $hCTIToolkit, $hUseCTILess, $honStartup
-
+Global Enum $hWindowLess, $hClientele, $hCTIToolkit, $hUseCTILess, $honStartup
 
 $oMyError = ObjEvent("AutoIt.Error","_ThrowError") ; Initialize a COM error handler
 
@@ -41,27 +41,39 @@ Func Main()
 	TrayCreateItem("")
 	Local $TrayExit = TrayCreateItem("Exit"    )
 
-	Local $hGUI = GUICreate("Settings", 280, 80, @DesktopWidth - 300, @DesktopHeight - 150, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX), $WS_EX_TOOLWINDOW + $WS_EX_TOPMOST)
+	Local $hGUI = GUICreate("Settings", 280, 100, @DesktopWidth - 300, @DesktopHeight - 180, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX), $WS_EX_TOOLWINDOW + $WS_EX_TOPMOST)
 
-	Local $aControls[4]
+	Local $aControls[5]
 
 	$aControls[$hWindowLess] = GUICtrlCreateCheckbox("Close Non-Work Windows while Talking"    , 10, 00, 260, 20, $BS_RIGHTBUTTON)
-	$aControls[$hCTIToolkit] = GUICtrlCreateCheckbox("Show Reminders for Non-Ready Status"     , 10, 20, 260, 20, $BS_RIGHTBUTTON)
-	$aControls[$hUseCTILess] = GUICtrlCreateCheckbox("Use 1 Minute Wrap-Up Reminders"          , 10, 40, 260, 20, $BS_RIGHTBUTTON)
-	$aControls[$honStartup]  = GUICtrlCreateCheckbox("Start with Windows"                      , 10, 60, 260, 20, $BS_RIGHTBUTTON)
+	$aControls[$hClientele ] = GUICtrlCreateCheckbox("Close Non-Work Windows while Signed in"  , 10, 20, 260, 20, $BS_RIGHTBUTTON)
+	$aControls[$hCTIToolkit] = GUICtrlCreateCheckbox("Show Reminders for Non-Ready Status"     , 10, 40, 260, 20, $BS_RIGHTBUTTON)
+	$aControls[$hUseCTILess] = GUICtrlCreateCheckbox("Use 1 Minute Wrap-Up Reminders"          , 10, 60, 260, 20, $BS_RIGHTBUTTON)
+	$aControls[$honStartup]  = GUICtrlCreateCheckbox("Start with Windows"                      , 10, 80, 260, 20, $BS_RIGHTBUTTON)
 	GUICtrlSetTip($aControls[$hCTIToolkit], "Display 2 minute reminders for Wrap-Up and" & @CRLF & "15 minute, 30 minute, & 1 hour reminders for Not Ready")
 	GUICtrlSetTip($aControls[$hUseCTILess], "Use 1 minute reminders for Wrap-Up to reduce AHT compared to 2 minutes")
 
 	$aSettings = _LoadSettings()
+;	_ArrayDisplay($aSettings)
 	GUICtrlSetState($aControls[$hWindowLess], $aSettings[$hWindowLess])
+	GUICtrlSetState($aControls[$hClientele ], $aSettings[$hClientele ])
 	GUICtrlSetState($aControls[$hCTIToolkit], $aSettings[$hCTIToolkit])
 	GUICtrlSetState($aControls[$hUseCTILess], $aSettings[$hUseCTILess])
 	GUICtrlSetState($aControls[$honStartup] , $aSettings[$honStartup] )
 
-	Local $bFinesse = Number($aSettings[4])
-	Local $sAPI = $aSettings[5]
-	Local $iUser = $aSettings[6]
-	Local $iPass = $aSettings[7]
+	Local $bFinesse = Number($aSettings[5])
+
+	Global $aAPI = StringSplit($aSettings[6], ",")
+	If @error Then
+		$aAPI = False
+	Else
+		$aAPI[0] = 1
+	EndIf
+
+;	_ArrayDisplay($aAPI)
+
+	Local $iUser = $aSettings[7]
+	Local $iPass = $aSettings[8]
 
 	Local $sStatus = Null
 
@@ -80,13 +92,17 @@ Func Main()
 
 	If $bFinesse Then
 		Select
-			Case Not $sAPI
+
+			Case Not $aAPI And Not IsArray($aAPI)
 				ContinueCase
+
 			Case Not $iUser
 				ContinueCase
+
 			Case Not $iPass
 				MsgBox($MB_OK + $MB_ICONWARNING + $MB_TOPMOST, "ALERT", "Finesse API specified but API or Credentials Invalid" & @CRLF & "Cisco Enhancer will now exit", 30)
 				Exit 1
+
 		EndSelect
 	EndIf
 
@@ -142,7 +158,7 @@ Func Main()
 				If TimerDiff($hLastPoll) >= $iPoll Then ; Rate Limiting is important
 					$iPoll = 500
 					$hLastPoll = TimerInit()
-					$sStatus = _FinesseGetState($sAPI, $iUser, $iPass)
+					$sStatus = _FinesseGetState($aAPI[$aAPI[0]], $iUser, $iPass)
 					If StringInStr($sStatus, "SERVER_OUT_OF_SERVICE") Then $iPoll = 30000
 					If @error Then
 						ConsoleWrite($sStatus & @CRLF & _
@@ -150,7 +166,6 @@ Func Main()
 						 @extended & @CRLF)
 					EndIf
 				EndIf
-				Else
 			EndIf
 
 			$bCLock = _GetDesktopLock()
@@ -175,7 +190,7 @@ Func Main()
 									Opt("WinTitleMatchMode", 2)
 									ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 								ElseIf WinExists("Cisco Finesse") Then
-									_FinesseSetState($sAPI, "READY", "", $iUser, $iPass)
+									_FinesseSetState($aAPI[$aAPI[0]], "READY", "", $iUser, $iPass)
 								EndIf
 							EndIf
 							WinMinimizeAllUndo()
@@ -199,7 +214,7 @@ Func Main()
 								Opt("WinTitleMatchMode", 2)
 								ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 							ElseIf WinExists("Cisco Finesse") Then
-								_FinesseSetState($sAPI, "READY", "", $iUser, $iPass)
+								_FinesseSetState($aAPI[$aAPI[0]], "READY", "", $iUser, $iPass)
 							EndIf
 						EndIf
 						$hMsgBox = Null
@@ -255,7 +270,7 @@ Func Main()
 								Opt("WinTitleMatchMode", 2)
 								ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 							ElseIf WinExists("Cisco Finesse") Then
-								_FinesseSetState($sAPI, "READY", "", $iUser, $iPass)
+								_FinesseSetState($aAPI[$aAPI[0]], "READY", "", $iUser, $iPass)
 							EndIf
 						EndIf
 						$hMsgBox = Null
@@ -270,7 +285,7 @@ Func Main()
 								Opt("WinTitleMatchMode", 2)
 								ControlSend("CTI Toolkit Agent Desktop", "", $aCtrls[2], "{ENTER}")
 							ElseIf WinExists("Cisco Finesse") Then
-								_FinesseSetState($sAPI, "READY", "", $iUser, $iPass)
+								_FinesseSetState($aAPI[$aAPI[0]], "READY", "", $iUser, $iPass)
 							EndIf
 						EndIf
 						$hMsgBox = Null
@@ -289,62 +304,19 @@ Func Main()
 			TraySetToolTip("Not Running - Unable to find CTI Window")
 		EndIf
 
-#cs
 		If _IsChecked($aSettings[$hClientele]) Then
-			If $sStatus = "Not Ready" Or $sStatus = "NOT_READY" Then
+			If $sStatus = "LOGOFF" Then
 				;;;
 			Else
 				_ProcessBlacklist()
 			EndIf
 		EndIf
-#ce
 
 	WEnd
 
 EndFunc   ;==>Main
 
 ; Additional Functions Called
-
-Func _ConvertOldSettings($sVersion)
-
-	Switch $sVersion
-		Case "0.0.0.0"
-			Local $aSettings[4]
-			$aSettings[0] = _IniRead(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , "", $GUI_UNCHECKED)
-			$aSettings[1] = _IniRead(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , "", $GUI_UNCHECKED)
-			$aSettings[2] = _IniRead(".\CiscoE.ini", "CiscoE" , "Start w. Windows", "", $GUI_UNCHECKED)
-			$aSettings[3] = _IniRead(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", "", False)
-
-			IniWrite(".\CiscoE.ini", "#META", "FileVer", $sVer)
-
-			If $aSettings[0] = "True" Then
-				IniWrite(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , 1)
-			Else
-				IniWrite(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , 0)
-			EndIf
-
-			If $aSettings[1] = "True" Then
-				IniWrite(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , 1)
-			Else
-				IniWrite(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , 0)
-			EndIf
-
-			If $aSettings[2] = "True" Then
-				IniWrite(".\CiscoE.ini", "CiscoE" , "Start w. Windows", 1)
-			Else
-				IniWrite(".\CiscoE.ini", "CiscoE" , "Start w. Windows", 0)
-			EndIf
-
-			If $aSettings[3] = "True" Then
-				IniWrite(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", 1)
-			Else
-				IniWrite(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", 0)
-			EndIf
-
-		Case Else
-			;;;
-	EndSwitch
-EndFunc
 
 Func _IsChecked($idControlID)
 	Return Number(BitAND(GUICtrlRead($idControlID), $GUI_CHECKED) = $GUI_CHECKED)
@@ -384,16 +356,17 @@ Func _GetTaskBarPos()
 EndFunc   ;==>_GetTaskBarPos
 
 Func _LoadSettings()
-	_ConvertOldSettings(IniRead(".\CiscoE.ini", "#Meta", "FileVer", "0.0.0.0"))
-	Local $aSettings[8]
+	_UpdateSettings(IniRead(".\CiscoE.ini", "#Meta", "FileVer", "0.0.0.0"))
+	Local $aSettings[9]
 	$aSettings[$hWindowLess] = _IniRead(".\CiscoE.ini", "CiscoE" , "Close Non-Work Apps", "1|0", $GUI_UNCHECKED)
+	$aSettings[$hClientele ] = _IniRead(".\CiscoE.ini", "CiscoE" , "Close on Sign in"   , "1|0", $GUI_UNCHECKED)
 	$aSettings[$hCTIToolkit] = _IniRead(".\CiscoE.ini", "Cisco"  , "Monitor Status"     , "1|0", $GUI_UNCHECKED)
 	$aSettings[$hUseCTILess] = _IniRead(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"     , "1|0", $GUI_UNCHECKED)
 	$aSettings[$honStartup]  = _IniRead(".\CiscoE.ini", "CiscoE" , "Start w. Windows"   , "1|0", $GUI_UNCHECKED)
-	$aSettings[4] = _IniRead(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs"   , "1|0", False)
-	$aSettings[5] = _IniRead(".\CiscoE.ini", "Finesse", "API URL"            , ""   , False)
-	$aSettings[6] = _IniRead(".\CiscoE.ini", "Finesse", "User ID"            , ""   , False)
-	$aSettings[7] = _IniRead(".\CiscoE.ini", "Finesse", "Password"           , ""   , False)
+	$aSettings[5] = _IniRead(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs"   , "1|0", False)
+	$aSettings[6] = _IniRead(".\CiscoE.ini", "Finesse", "API URLs"           , ""   , False)
+	$aSettings[7] = _IniRead(".\CiscoE.ini", "Finesse", "User ID"            , ""   , False)
+	$aSettings[8] = _IniRead(".\CiscoE.ini", "Finesse", "Password"           , ""   , False)
 	Return $aSettings
 EndFunc   ;==>_LoadSettings
 
@@ -432,17 +405,78 @@ Func _SaveSettings($aSettings)
 EndFunc   ;==>_SaveSettings
 
 Func _ThrowError()
-	Msgbox(0,"COM Error","Cisco Enhancer is unable to communicate with the Finesse API and will now exit." & @CRLF  & @CRLF & _
-			"Description: " & @TAB & $oMyError.description  & @CRLF & _
-			"Full Description:"   & @TAB & $oMyError.windescription & @CRLF & _
-			"Error Number: "       & @TAB & hex($oMyError.number,8)  & @CRLF & _
-			"DLL Error ID: "   & @TAB & $oMyError.lastdllerror   & @CRLF & _
-			"Error Occured: "   & @TAB & $oMyError.scriptline   & @CRLF & _
-			"COM Called: "       & @TAB & $oMyError.source       & @CRLF & _
-			"Help File: "       & @TAB & $oMyError.helpfile     & @CRLF & _
-			"Help Context: " & @TAB & $oMyError.helpcontext _
-			)
+	$aAPI[0] += 1
+	If $aAPI > UBound($aAPI) Then
+		Msgbox($MB_ICONERROR,"COM Error", "ITSD Desktop Tools is unable to communicate with the Finesse API and will now exit." & @CRLF  & @CRLF & _
+				"Description: " & @TAB & $oMyError.description  & @CRLF & _
+				"Full Description:"   & @TAB & $oMyError.windescription & @CRLF & _
+				"Error Number: "       & @TAB & hex($oMyError.number,8)  & @CRLF & _
+				"DLL Error ID: "   & @TAB & $oMyError.lastdllerror   & @CRLF & _
+				"Error Occured: "   & @TAB & $oMyError.scriptline   & @CRLF & _
+				"COM Called: "       & @TAB & $oMyError.source       & @CRLF & _
+				"Help File: "       & @TAB & $oMyError.helpfile     & @CRLF & _
+				"Help Context: " & @TAB & $oMyError.helpcontext _
+				, 10)
+	Else
+		MsgBox($MB_ICONWARNING, "API Error", "ITSD Desktop Tools is unable to communite with the Finesse API and will attempt another." & @CRLF & @CRLF & _
+				"Current API: "	& @TAB & $aAPI[$aAPI[0]] & @CRLF &_
+				"Previous API: " & @TAB & $aAPI[$aAPI[0] - 1] _
+				, 10)
+	EndIf
 	Exit 1
+EndFunc
+
+Func _UpdateSettings($sVersion)
+
+	Local $aSettings[0]
+	IniWrite(".\CiscoE.ini", "#META", "FileVer", $sVer)
+
+	Switch $sVersion
+
+		Case "0.0.0.0"
+			ReDim $aSettings[4]
+			$aSettings[0] = _IniRead(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , "", $GUI_UNCHECKED)
+			$aSettings[1] = _IniRead(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , "", $GUI_UNCHECKED)
+			$aSettings[2] = _IniRead(".\CiscoE.ini", "CiscoE" , "Start w. Windows", "", $GUI_UNCHECKED)
+			$aSettings[3] = _IniRead(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", "", False)
+
+			If $aSettings[0] = "True" Then
+				IniWrite(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , 1)
+			Else
+				IniWrite(".\CiscoE.ini", "Cisco"  , "Monitor Status"  , 0)
+			EndIf
+
+			If $aSettings[1] = "True" Then
+				IniWrite(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , 1)
+			Else
+				IniWrite(".\CiscoE.ini", "Cisco"  , "1 Min Reminder"  , 0)
+			EndIf
+
+			If $aSettings[2] = "True" Then
+				IniWrite(".\CiscoE.ini", "CiscoE" , "Start w. Windows", 1)
+			Else
+				IniWrite(".\CiscoE.ini", "CiscoE" , "Start w. Windows", 0)
+			EndIf
+
+			If $aSettings[3] = "True" Then
+				IniWrite(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", 1)
+			Else
+				IniWrite(".\CiscoE.ini", "CiscoE" , "Use Finesse APIs", 0)
+			EndIf
+
+			ContinueCase
+
+		Case "1.1.0.0"
+			ReDim $aSettings[1]
+			$aSettings[0] = _IniRead(".\CiscoE.ini", "Finesse"  , "API URL"  , "", False)
+			IniWrite(".\CiscoE.ini", "Finesse"  , "API URLs"  , $aSettings[0])
+			IniDelete(".\CiscoE.ini", "Finesse"  , "API URL")
+
+		Case Else
+			;;;
+
+	EndSwitch
+
 EndFunc
 
 Func _WinGetHandleListFromPos($sTitle, $sText, $iX, $iY, $dFlags = $CTRL_ALL)
