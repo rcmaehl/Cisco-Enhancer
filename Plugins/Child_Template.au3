@@ -2,12 +2,17 @@ Main()
 
 Func Main()
 
-	Local $sStatus
+	Local $sIn, $sStatus
 
 	While True
 
-		$sStatus = ConsoleRead()
-		If @extended = 0 Then ContinueLoop
+		$sIn = ConsoleRead()
+		If @extended = 0 Then
+			; Uncomment the following line if you only want the code ran on Agent Status Changes
+			; ContinueLoop
+		Else
+			$sStatus = $sIn
+		EndIf
 
 		Switch $sStatus
 
